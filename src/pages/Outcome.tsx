@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react';
@@ -9,18 +9,21 @@ export default function Outcome() {
   const navigate = useNavigate();
   const [count, setCount] = useState(0);
   
-  const highRiskCount = analyzedData.filter(e => e.riskScore > 70).length;
-  const expectedAttrition = highRiskCount > 0 ? highRiskCount : Math.floor(Math.random() * 8) + 5;
+  const expectedAttrition = useMemo(() => {
+    const highRiskCount = analyzedData.filter(e => e.riskScore > 70).length;
+    // Use a stable calculation instead of Math.random to satisfy linter purity rules
+    return highRiskCount > 0 ? highRiskCount : (analyzedData.length % 8) + 5;
+  }, [analyzedData]);
 
   useEffect(() => {
     let start = 0;
     const end = expectedAttrition;
     if (start === end) return;
 
-    let totalMiliseconds = 1500;
-    let incrementTime = (totalMiliseconds / end);
+    const totalMiliseconds = 1500;
+    const incrementTime = (totalMiliseconds / end);
 
-    let timer = setInterval(() => {
+    const timer = setInterval(() => {
       start += 1;
       setCount(start);
       if (start === end) clearInterval(timer);

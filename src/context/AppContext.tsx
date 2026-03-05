@@ -15,29 +15,32 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [analyzedData, setAnalyzedData] = useState<Employee[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('attrix_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [analyzedData, setAnalyzedData] = useState<Employee[]>(() => {
     const savedUser = localStorage.getItem('attrix_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      
       const userData = localStorage.getItem(`attrix_data_${parsedUser.id}`);
-      if (userData) {
-        setAnalyzedData(JSON.parse(userData));
-      }
-
-      const userMeetings = localStorage.getItem(`attrix_meetings_${parsedUser.id}`);
-      if (userMeetings) {
-        setMeetings(JSON.parse(userMeetings));
-      }
+      return userData ? JSON.parse(userData) : [];
     }
-  }, []);
+    return [];
+  });
+  const [meetings, setMeetings] = useState<Meeting[]>(() => {
+    const savedUser = localStorage.getItem('attrix_user');
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      const userMeetings = localStorage.getItem(`attrix_meetings_${parsedUser.id}`);
+      return userMeetings ? JSON.parse(userMeetings) : [];
+    }
+    return [];
+  });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Remove the initialization useEffect
 
   const login = (u: User) => {
     setUser(u);
@@ -108,6 +111,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useApp = () => {
   const context = useContext(AppContext);
   if (context === undefined) {

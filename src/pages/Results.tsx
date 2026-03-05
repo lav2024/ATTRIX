@@ -196,7 +196,14 @@ const ClockPicker = ({
 
 export default function Results() {
   const { user, analyzedData: employees, addMeeting: onAddMeeting } = useApp();
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(() => {
+    if (!user) return null;
+    const savedSelectedId = localStorage.getItem(`results_selected_id_${user.id}`);
+    if (savedSelectedId && employees.length > 0) {
+      return employees.find(e => e.id === savedSelectedId) || null;
+    }
+    return null;
+  });
   const [planningEmployee, setPlanningEmployee] = useState<Employee | null>(null);
   const [isFixed, setIsFixed] = useState(false);
   const [meetingDetails, setMeetingDetails] = useState({ date: '', time: '' });
@@ -208,7 +215,6 @@ export default function Results() {
   useEffect(() => {
     if (!user) return;
     const savedScroll = localStorage.getItem(`results_scroll_pos_${user.id}`);
-    const savedSelectedId = localStorage.getItem(`results_selected_id_${user.id}`);
 
     if (savedScroll) {
       setTimeout(() => {
@@ -218,12 +224,10 @@ export default function Results() {
         });
       }, 100);
     }
+  }, [user]);
 
-    if (savedSelectedId && employees.length > 0) {
-      const emp = employees.find(e => e.id === savedSelectedId);
-      if (emp) setSelectedEmployee(emp);
-    }
-  }, [employees, user]);
+  // Removed useEffect that called setSelectedEmployee() synchronously
+
 
   useEffect(() => {
     if (!user) return;
@@ -258,15 +262,21 @@ export default function Results() {
     isResizing.current = false;
     document.body.style.cursor = 'default';
     window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', stopResizing);
+    // We'll remove the listener in startResizing's cleanup or just use a named function
   }, [handleMouseMove]);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isResizing.current = true;
     document.body.style.cursor = 'ns-resize';
+    
+    const onMouseUp = () => {
+      stopResizing();
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', stopResizing);
+    window.addEventListener('mouseup', onMouseUp);
   }, [handleMouseMove, stopResizing]);
 
   if (!employees.length) {

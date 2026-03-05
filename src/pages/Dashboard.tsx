@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Employee } from '../types';
 import { Users, AlertTriangle, TrendingUp, CheckCircle, ArrowLeft, Calendar as CalendarIcon, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -34,21 +33,35 @@ export default function Dashboard() {
     { name: 'High', value: employees.filter(e => e.riskLevel === 'High').length },
   ];
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthlyData = monthNames.map((month) => {
-    return {
+  const monthlyData = useMemo(() => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Use fixed values for stability and to satisfy linter purity rules
+    return monthNames.map((month, index) => ({
       month,
-      high: Math.floor(Math.random() * 5) + 2,
-      medium: Math.floor(Math.random() * 15) + 10,
-      low: Math.floor(Math.random() * 30) + 80,
-    };
-  });
+      high: (index % 3) + 2,
+      medium: (index % 5) + 10,
+      low: (index % 10) + 80,
+    }));
+  }, []);
 
-  const top5Depts = [...deptData]
-    .sort((a, b) => b.risk - a.risk)
-    .slice(0, 5);
+  const top5Depts = useMemo(() => {
+    return [...deptData]
+      .sort((a, b) => b.risk - a.risk)
+      .slice(0, 5);
+  }, [deptData]);
 
-  const riskDimensions = ['Satisfaction', 'Tenure', 'Salary', 'Promotion', 'Workload'];
+  const riskDimensions = useMemo(() => ['Satisfaction', 'Tenure', 'Salary', 'Promotion', 'Workload'], []);
+  
+  const heatmapData = useMemo(() => {
+    return top5Depts.map((dept, idx) => {
+      return riskDimensions.map((dim, dIdx) => {
+        const baseIntensity = dept.risk;
+        const variance = ((idx + dIdx) % 5) * 10 - 20;
+        const intensity = Math.min(100, Math.max(0, baseIntensity + variance));
+        return { dim, intensity };
+      });
+    });
+  }, [top5Depts, riskDimensions]);
   
   const getHeatmapColor = (value: number) => {
     if (value < 30) return 'bg-emerald-500';
@@ -186,23 +199,18 @@ export default function Dashboard() {
             <div className="space-y-4">
               {top5Depts.map((dept, idx) => (
                 <div key={dept.name} className="grid grid-cols-6 gap-4 items-center">
-                  <div className="col-span-1 font-bold text-slate-700 truncate pr-2">
+                   <div className="col-span-1 font-bold text-slate-700 truncate pr-2">
                     {dept.name}
                   </div>
-                  {riskDimensions.map((dim, dIdx) => {
-                    const baseIntensity = dept.risk;
-                    const variance = ((idx + dIdx) % 5) * 10 - 20;
-                    const intensity = Math.min(100, Math.max(0, baseIntensity + variance));
-                    return (
-                      <div 
-                        key={dim} 
-                        className={`h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform hover:scale-105 cursor-default ${getHeatmapColor(intensity)}`}
-                        title={`${dept.name} - ${dim}: ${intensity.toFixed(0)}%`}
-                      >
-                        {intensity.toFixed(0)}%
-                      </div>
-                    );
-                  })}
+                  {heatmapData[idx].map((data) => (
+                    <div 
+                      key={data.dim} 
+                      className={`h-14 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform hover:scale-105 cursor-default ${getHeatmapColor(data.intensity)}`}
+                      title={`${dept.name} - ${data.dim}: ${data.intensity.toFixed(0)}%`}
+                    >
+                      {data.intensity.toFixed(0)}%
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

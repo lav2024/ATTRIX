@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, Employee, Meeting } from '../types';
 import { 
@@ -9,7 +9,6 @@ import {
   User as UserIcon, 
   ChevronDown, 
   Calendar, 
-  AlertCircle, 
   Clock,
   History
 } from 'lucide-react';
@@ -24,7 +23,10 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ user, onLogout, employees, meetings }) => {
   const location = useLocation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [lastSignOut, setLastSignOut] = useState<string | null>(null);
+  const lastSignOut = useMemo(() => {
+    if (!user) return null;
+    return localStorage.getItem(`attrix_last_signout_${user.id}`);
+  }, [user]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
@@ -40,20 +42,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, employees, meetings }) 
     return `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  const loadData = () => {
-    if (!user) return;
-    
-    const savedLastSignOut = localStorage.getItem(`attrix_last_signout_${user.id}`);
-    if (savedLastSignOut) {
-      setLastSignOut(savedLastSignOut);
-    } else {
-      setLastSignOut(null);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
@@ -64,11 +53,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, employees, meetings }) 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isProfileOpen) {
-      loadData();
-    }
-  }, [isProfileOpen]);
+  // Removed useEffect that called loadData() synchronously
+
 
   const highRiskCount = employees.filter(e => e.riskLevel === 'High').length;
   const mediumRiskCount = employees.filter(e => e.riskLevel === 'Medium').length;
