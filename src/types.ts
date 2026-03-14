@@ -7,6 +7,8 @@ export interface User {
 export interface Employee {
   id: string;
   name: string;
+  email?: string;
+  age?: number;
   department: string;
   role: string;
   riskLevel: 'High' | 'Medium' | 'Low';

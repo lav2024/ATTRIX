@@ -54,9 +54,10 @@ export default function Upload() {
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 95) return prev;
-        return prev + Math.floor(Math.random() * 3) + 1;
+        // Faster progress increments for parallel processing
+        return prev + Math.floor(Math.random() * 5) + 2;
       });
-    }, 500);
+    }, 300);
 
     try {
       const rawData = await parseFile(file);
@@ -65,7 +66,8 @@ export default function Upload() {
         throw new Error("The file appears to be empty or invalid.");
       }
 
-      const limitedData = rawData.slice(0, 500);
+      // Increase limit to 1000 now that we have parallel batching
+      const limitedData = rawData.slice(0, 1000);
       const analyzed = await analyzeAttrition(limitedData);
       
       localStorage.removeItem(`results_scroll_pos_${user.id}`);

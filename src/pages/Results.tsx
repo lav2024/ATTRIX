@@ -300,9 +300,11 @@ export default function Results() {
 
   const exportAllToPDF = () => {
     const doc = new jsPDF();
+    
+    // First Page: Summary Table
     doc.setFontSize(20);
     doc.setTextColor(79, 70, 229);
-    doc.text('ATTRIX - Attrition Analysis Report', 14, 22);
+    doc.text('ATTRIX - Workforce Analysis Summary', 14, 22);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
@@ -310,72 +312,104 @@ export default function Results() {
 
     const tableData = sortedEmployees.map(emp => [
       emp.name,
+      emp.email || 'N/A',
+      emp.age || 'N/A',
       emp.department,
       emp.role,
       `${emp.riskScore}%`,
-      emp.riskLevel,
-      `${emp.satisfactionScore}%`
+      emp.explanation
     ]);
 
     autoTable(doc, {
       startY: 45,
-      head: [['Name', 'Department', 'Role', 'Risk Score', 'Risk Level', 'Satisfaction']],
+      head: [['Name', 'Email', 'Age', 'Dept', 'Role', 'Risk', 'AI Risk Explanation']],
       body: tableData,
       headStyles: { fillColor: [79, 70, 229] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      styles: { fontSize: 7, cellPadding: 2 },
+      columnStyles: {
+        6: { cellWidth: 55 } // Allocate more space for the explanation
+      }
+    });
+
+    // Subsequent Pages: Detailed Analysis for each employee
+    sortedEmployees.forEach((emp) => {
+      doc.addPage();
+      exportIndividualPDF(emp, doc);
     });
 
     doc.save('ATTRIX_Full_Workforce_Analysis.pdf');
   };
 
-  const exportIndividualPDF = (emp: Employee) => {
-    const doc = new jsPDF();
+  const exportIndividualPDF = (emp: Employee, docInstance?: jsPDF) => {
+    const doc = docInstance || new jsPDF();
+    const startY = docInstance ? 15 : 25;
+    
     doc.setFontSize(22);
     doc.setTextColor(79, 70, 229);
-    doc.text(`Employee Analysis: ${emp.name}`, 14, 25);
+    doc.text(`Employee Analysis: ${emp.name}`, 14, startY);
+    
     doc.setFontSize(12);
     doc.setTextColor(100);
-    doc.text(`${emp.role} • ${emp.department}`, 14, 35);
+    doc.text(`${emp.role} • ${emp.department}`, 14, startY + 10);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Email: ${emp.email || 'N/A'} • Age: ${emp.age || 'N/A'}`, 14, startY + 17);
+    
     doc.setDrawColor(226, 232, 240);
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(14, 45, 182, 30, 3, 3, 'FD');
+    doc.roundedRect(14, startY + 25, 182, 30, 3, 3, 'FD');
+    
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text('RISK SCORE', 20, 55);
-    doc.text('TENURE', 80, 55);
-    doc.text('SATISFACTION', 140, 55);
+    doc.text('RISK SCORE', 20, startY + 35);
+    doc.text('TENURE', 80, startY + 35);
+    doc.text('SATISFACTION', 140, startY + 35);
+    
     doc.setFontSize(16);
     doc.setTextColor(30, 41, 59);
-    doc.text(`${emp.riskScore}%`, 20, 65);
-    doc.text(`${emp.tenure} Years`, 80, 65);
-    doc.text(`${emp.satisfactionScore}%`, 140, 65);
+    doc.text(`${emp.riskScore}%`, 20, startY + 45);
+    doc.text(`${emp.tenure} Years`, 80, startY + 45);
+    doc.text(`${emp.satisfactionScore}%`, 140, startY + 45);
+    
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
-    doc.text('AI Risk Explanation', 14, 90);
+    doc.text('AI Risk Explanation', 14, startY + 70);
+    
     doc.setFontSize(11);
     doc.setTextColor(71, 85, 105);
     const splitExplanation = doc.splitTextToSize(emp.explanation, 180);
-    doc.text(splitExplanation, 14, 100);
-    let currentY = 100 + (splitExplanation.length * 7) + 10;
+    doc.text(splitExplanation, 14, startY + 80);
+    
+    let currentY = startY + 80 + (splitExplanation.length * 7) + 10;
+    
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
     doc.text('Key Risk Factors', 14, currentY);
+    
     doc.setFontSize(11);
     doc.setTextColor(220, 38, 38);
     emp.riskFactors.forEach((factor, i) => {
       doc.text(`• ${factor}`, 14, currentY + 10 + (i * 7));
     });
+    
     currentY = currentY + 10 + (emp.riskFactors.length * 7) + 10;
+    
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
     doc.text('Retention Recommendations', 14, currentY);
+    
     doc.setFontSize(11);
     doc.setTextColor(180, 83, 9);
     emp.recommendations.forEach((rec, i) => {
       const splitRec = doc.splitTextToSize(`${i + 1}. ${rec}`, 180);
       doc.text(splitRec, 14, currentY + 10 + (i * 15));
     });
-    doc.save(`ATTRIX_Report_${emp.name.replace(/\s+/g, '_')}.pdf`);
+
+    if (!docInstance) {
+      doc.save(`ATTRIX_Report_${emp.name.replace(/\s+/g, '_')}.pdf`);
+    }
   };
 
   return (
@@ -550,10 +584,12 @@ export default function Results() {
                 <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-900">{emp.name}</div>
-                    <div className="text-xs text-slate-500">ID: {emp.id}</div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">
+                      {emp.email} • {emp.age} years
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <div className="text-slate-700">{emp.department}</div>
+                    <div className="text-slate-700 font-semibold">{emp.department}</div>
                     <div className="text-slate-400 text-xs">{emp.role}</div>
                   </td>
                   <td className="px-6 py-4 text-center">
@@ -624,6 +660,9 @@ export default function Results() {
                   <p className="text-indigo-200 text-lg flex items-center">
                     <Briefcase className="h-5 w-5 mr-2" />
                     {selectedEmployee.role} • {selectedEmployee.department}
+                  </p>
+                  <p className="text-indigo-100/60 text-sm mt-1 font-medium">
+                    {selectedEmployee.email} • {selectedEmployee.age} years old
                   </p>
                 </div>
               </div>
@@ -749,6 +788,7 @@ const AtRiskCard: React.FC<{ employee: Employee, onSelect: () => void, onPlan: (
         <div>
           <h3 className="text-xl font-bold">{employee.name}</h3>
           <p className="text-red-100 text-sm">{employee.role} • {employee.department}</p>
+          <p className="text-red-100/60 text-xs mt-1 font-medium">{employee.email} • {employee.age}y</p>
         </div>
         <div className="bg-white/20 backdrop-blur-md rounded-2xl p-2 text-center">
           <div className="text-2xl font-extrabold">{employee.riskScore}%</div>
